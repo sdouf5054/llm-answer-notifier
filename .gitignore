@@ -1,0 +1,4 @@
+# shut-your-reels-down/.gitignore
+personal/
+*.zip
+.DS_Store
