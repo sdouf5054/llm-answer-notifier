@@ -1,6 +1,9 @@
 # shut your reels down — LLM Answer Notifier
 *Stop doomscrolling. Start working.*
 
+<img width="260" height="598" alt="image" src="https://github.com/user-attachments/assets/72104f4e-2e5e-4146-a120-c6ed7ae8adee" />
+
+
 ## 목적
 
 여러 LLM에 질문을 던지고 다른 작업을 하다가, 답변이 완료되면 **사이트별로 다른 알림음**으로 어떤 모델이 끝났는지 바로 알 수 있게 하는 것.
