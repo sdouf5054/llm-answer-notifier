@@ -154,7 +154,7 @@ async function sendDiscord(site, tabTitle, timestamp, preview) {
   discordQueue.push({
     url: settings.discordWebhookUrl,
     siteLabel,
-    payload: { username: 'AI Answer Notifier', content }
+    payload: { username: 'shut your reels down', content }
   });
 
   processDiscordQueue();
@@ -219,8 +219,8 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: 'AI Answer Notifier',
-          content: '🔔 테스트 메시지 — AI Answer Notifier가 정상 연결되었습니다!'
+          username: 'shut your reels down',
+          content: '🔔 테스트 메시지 — shut your reels down이 정상 연결되었습니다!'
         })
       }).then(res => {
         chrome.runtime.sendMessage({
