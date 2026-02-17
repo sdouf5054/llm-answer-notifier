@@ -1,5 +1,6 @@
-# shut your reels down — LLM Answer Notifier
-*Stop doomscrolling. Start working.*
+# AI Answer Notifier
+
+LLM(ChatGPT, Claude, Gemini, Perplexity) 답변 생성 완료 시 소리로 알려주는 Chrome 확장 프로그램.
 
 ## 목적
 

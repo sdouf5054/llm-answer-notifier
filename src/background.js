@@ -50,6 +50,62 @@ async function playSound(site) {
   chrome.runtime.sendMessage({ type: 'PLAY_SOUND', volume, soundFile });
 }
 
+// ─── Discord Webhook ─────────────────────────────────────────
+
+const SITE_LABELS = {
+  'chatgpt.com':        'ChatGPT',
+  'claude.ai':          'Claude',
+  'gemini.google.com':  'Gemini',
+  'perplexity.ai':      'Perplexity'
+};
+
+async function sendDiscord(site, tabTitle, timestamp) {
+  const { discordWebhookUrl, discordEnabled } = await chrome.storage.sync.get({
+    discordWebhookUrl: '',
+    discordEnabled: false
+  });
+
+  if (!discordEnabled || !discordWebhookUrl) return;
+
+  // URL 형식 최소 검증
+  if (!discordWebhookUrl.startsWith('https://discord.com/api/webhooks/')) {
+    console.log(P, 'Discord: invalid webhook URL');
+    return;
+  }
+
+  const siteLabel = SITE_LABELS[site] || site;
+  const time = new Date(timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  const content = `✅ **${siteLabel}** 답변 완료 — ${tabTitle} (${time})`;
+
+  try {
+    const res = await fetch(discordWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'AI Answer Notifier',
+        content
+      })
+    });
+
+    if (res.status === 429) {
+      // Rate limited — retry after delay
+      const data = await res.json().catch(() => ({}));
+      const retryMs = (data.retry_after || 2) * 1000;
+      console.log(P, `Discord: rate limited, retrying in ${retryMs}ms`);
+      setTimeout(() => sendDiscord(site, tabTitle, timestamp), retryMs);
+      return;
+    }
+
+    if (!res.ok) {
+      console.log(P, `Discord: HTTP ${res.status}`);
+    } else {
+      console.log(P, `Discord: sent (${siteLabel})`);
+    }
+  } catch (err) {
+    console.log(P, 'Discord: fetch error', err.message);
+  }
+}
+
 // ─── 탭별 알림 쿨다운 (네트워크 ↔ Content Script 중복 방지) ──
 
 const tabCooldown = new Map();
@@ -98,6 +154,36 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
       playSound(msg.site);
       break;
 
+    case 'TEST_DISCORD': {
+      // 옵션 페이지에서 테스트 전송 → 결과를 sendResponse로 반환
+      const url = msg.webhookUrl;
+      if (!url || !url.startsWith('https://discord.com/api/webhooks/')) {
+        msg._sendResponse?.({ ok: false, error: 'Invalid URL' });
+        break;
+      }
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: 'AI Answer Notifier',
+          content: '🔔 테스트 메시지 — AI Answer Notifier가 정상 연결되었습니다!'
+        })
+      }).then(res => {
+        chrome.runtime.sendMessage({
+          type: 'TEST_DISCORD_RESULT',
+          ok: res.ok,
+          status: res.status
+        });
+      }).catch(err => {
+        chrome.runtime.sendMessage({
+          type: 'TEST_DISCORD_RESULT',
+          ok: false,
+          error: err.message
+        });
+      });
+      break;
+    }
+
     case 'ANSWER_DONE':
       console.log(P, 'Answer done:', msg.site, `(tab ${tabId})`);
       if (tabId && !canNotify(tabId)) {
@@ -106,6 +192,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
       }
       if (tabId) markNotified(tabId);
       playSound(msg.site);
+      sendDiscord(msg.site, msg.tabTitle, msg.timestamp);
       break;
 
     case 'START_HEARTBEAT':
@@ -176,6 +263,7 @@ chrome.webRequest.onCompleted.addListener(
         markNotified(tabId);
         console.log(P, `${site} stream ended (${duration}ms) — playing sound`);
         playSound(site);
+        sendDiscord(site, tab.title, new Date().toISOString());
         chrome.tabs.sendMessage(tabId, { type: 'NETWORK_DONE' }).catch(() => {});
       });
     });

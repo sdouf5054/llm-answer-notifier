@@ -96,6 +96,48 @@
 
     .preview-btn:hover { background: #f0f0f0; }
     .preview-btn:active { background: #e4e4e4; }
+
+    /* Discord 설정 */
+    .discord-url {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 13px;
+      font-family: monospace;
+      margin-bottom: 10px;
+    }
+
+    .discord-url::placeholder { color: #aaa; }
+
+    .discord-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .discord-btn {
+      padding: 6px 14px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.15s;
+    }
+
+    .discord-btn:hover { background: #f0f0f0; }
+    .discord-btn:active { background: #e4e4e4; }
+
+    .discord-status {
+      font-size: 12px;
+      margin-top: 4px;
+      min-height: 16px;
+    }
+
+    .discord-status.ok  { color: #4caf50; }
+    .discord-status.err { color: #f44336; }
   </style>
 </head>
 <body>
@@ -123,6 +165,21 @@
       <input type="checkbox" id="alwaysNotify">
       탭을 보고 있을 때도 항상 알림 (해제 시 다른 탭에 있을 때만 알림)
     </label>
+  </div>
+
+  <!-- Discord Webhook -->
+  <div class="group">
+    <h2>Discord Webhook</h2>
+    <label class="checkbox-label">
+      <input type="checkbox" id="discordEnabled">
+      답변 완료 시 Discord로 알림 전송
+    </label>
+    <input type="text" class="discord-url" id="discordUrl"
+      placeholder="https://discord.com/api/webhooks/..." />
+    <div class="discord-row">
+      <button class="discord-btn" id="discordTestBtn">📤 테스트 전송</button>
+    </div>
+    <div class="discord-status" id="discordStatus"></div>
   </div>
 
   <script src="options.js"></script>

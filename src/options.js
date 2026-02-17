@@ -125,3 +125,68 @@ $volume.addEventListener('input', () => {
 $alwaysNotify.addEventListener('change', () => {
   chrome.storage.sync.set({ alwaysNotify: $alwaysNotify.checked });
 });
+
+// ─── Discord Webhook ────────────────────────────────────────
+
+const $discordEnabled = document.getElementById('discordEnabled');
+const $discordUrl     = document.getElementById('discordUrl');
+const $discordTestBtn = document.getElementById('discordTestBtn');
+const $discordStatus  = document.getElementById('discordStatus');
+
+// 로드
+chrome.storage.sync.get({ discordEnabled: false, discordWebhookUrl: '' }, (s) => {
+  $discordEnabled.checked = s.discordEnabled;
+  $discordUrl.value = s.discordWebhookUrl;
+});
+
+// 활성화 토글
+$discordEnabled.addEventListener('change', () => {
+  chrome.storage.sync.set({ discordEnabled: $discordEnabled.checked });
+});
+
+// URL 저장 (입력 중 자동 저장)
+let urlSaveTimer;
+$discordUrl.addEventListener('input', () => {
+  clearTimeout(urlSaveTimer);
+  urlSaveTimer = setTimeout(() => {
+    chrome.storage.sync.set({ discordWebhookUrl: $discordUrl.value.trim() });
+  }, 500);
+});
+
+// 테스트 전송
+$discordTestBtn.addEventListener('click', () => {
+  const url = $discordUrl.value.trim();
+  if (!url) {
+    showDiscordStatus('Webhook URL을 입력하세요', true);
+    return;
+  }
+  if (!url.startsWith('https://discord.com/api/webhooks/')) {
+    showDiscordStatus('올바른 Discord Webhook URL이 아닙니다', true);
+    return;
+  }
+
+  // URL 저장 + 전송 요청
+  chrome.storage.sync.set({ discordWebhookUrl: url });
+  $discordTestBtn.disabled = true;
+  $discordTestBtn.textContent = '전송 중...';
+  chrome.runtime.sendMessage({ type: 'TEST_DISCORD', webhookUrl: url });
+});
+
+// 테스트 결과 수신
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.type !== 'TEST_DISCORD_RESULT') return;
+  $discordTestBtn.disabled = false;
+  $discordTestBtn.textContent = '📤 테스트 전송';
+
+  if (msg.ok) {
+    showDiscordStatus('✓ 전송 성공! Discord 채널을 확인하세요', false);
+  } else {
+    showDiscordStatus(`✗ 전송 실패 (${msg.status || msg.error})`, true);
+  }
+});
+
+function showDiscordStatus(text, isError) {
+  $discordStatus.textContent = text;
+  $discordStatus.className = 'discord-status ' + (isError ? 'err' : 'ok');
+  setTimeout(() => { $discordStatus.textContent = ''; }, 5000);
+}

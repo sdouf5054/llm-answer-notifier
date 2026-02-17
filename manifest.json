@@ -10,7 +10,8 @@
     "https://chat.openai.com/*",
     "https://claude.ai/*",
     "https://gemini.google.com/*",
-    "https://www.perplexity.ai/*"
+    "https://www.perplexity.ai/*",
+    "https://discord.com/api/webhooks/*"
   ],
 
   "background": { "service_worker": "src/background.js" },
