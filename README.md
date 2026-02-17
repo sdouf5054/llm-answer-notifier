@@ -86,5 +86,5 @@ The extension sends a message to a Discord channel via **Webhook**, and Discord 
 
 
 ## License
-MIT (or choose one)
+MIT
 
