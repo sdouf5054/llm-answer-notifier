@@ -182,6 +182,34 @@
     <div class="discord-status" id="discordStatus"></div>
   </div>
 
+  <!-- Discord 사이트별 설정 -->
+  <div class="group">
+    <h2>Discord 사이트별 알림</h2>
+    <div id="discordSitesContainer"></div>
+  </div>
+
+  <!-- Discord 미리보기 -->
+  <div class="group">
+    <h2>Discord 미리보기</h2>
+    <label class="checkbox-label">
+      <input type="checkbox" id="discordPreview">
+      답변 텍스트 미리보기 포함
+    </label>
+    <label>
+      미리보기 글자 수
+      <input type="number" id="discordPreviewLength" min="50" max="500" step="50" value="200"
+        style="width:70px; padding:4px 8px; border:1px solid #ccc; border-radius:5px; font-size:13px;">
+      <span style="font-size:12px; color:#888;">자</span>
+    </label>
+  </div>
+
+  <!-- Discord 에러 로그 -->
+  <div class="group">
+    <h2>Discord 전송 로그</h2>
+    <div id="discordErrors" style="font-size:12px; color:#888; min-height:20px;">에러 없음</div>
+    <button class="discord-btn" id="discordClearErrors" style="margin-top:8px;">로그 초기화</button>
+  </div>
+
   <script src="options.js"></script>
 </body>
 </html>

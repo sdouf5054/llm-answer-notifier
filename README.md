@@ -123,5 +123,6 @@ ai-answer-notifier/
 
 ## 버전 히스토리
 
+- **v0.3.0** — 디스코드 연동 알림(Discord webhook 이용, preview 등)
 - **v0.2.0** — 4개 플랫폼 지원, 사이트별 알림음, DOM+네트워크 이중 감지, 중복 알림 방지
 - **v0.1.0** — ChatGPT DOM 감지 + 소리 재생 초기 버전

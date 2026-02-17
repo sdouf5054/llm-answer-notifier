@@ -119,7 +119,8 @@
         type: 'ANSWER_DONE',
         site: detector.hostnames[0],
         tabTitle: document.title,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        preview: text ? text.slice(0, 500) : ''
       });
 
       transition('DONE');

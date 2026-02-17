@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "AI Answer Notifier",
-  "version": "0.2.0",
-  "description": "LLM 답변 생성 완료 시 소리로 알려줍니다.",
+  "name": "shut your reels down — LLM Answer Notifier",
+  "version": "0.3.0",
+  "description": "Notifies you with a sound when an LLM finishes generating a response.",
 
   "permissions": ["offscreen", "storage", "webRequest"],
   "host_permissions": [

@@ -128,23 +128,76 @@ $alwaysNotify.addEventListener('change', () => {
 
 // ─── Discord Webhook ────────────────────────────────────────
 
-const $discordEnabled = document.getElementById('discordEnabled');
-const $discordUrl     = document.getElementById('discordUrl');
-const $discordTestBtn = document.getElementById('discordTestBtn');
-const $discordStatus  = document.getElementById('discordStatus');
+const DEFAULT_DISCORD_SITES = {
+  'chatgpt.com': true, 'claude.ai': true,
+  'gemini.google.com': true, 'perplexity.ai': true
+};
 
-// 로드
-chrome.storage.sync.get({ discordEnabled: false, discordWebhookUrl: '' }, (s) => {
+const $discordEnabled       = document.getElementById('discordEnabled');
+const $discordUrl           = document.getElementById('discordUrl');
+const $discordTestBtn       = document.getElementById('discordTestBtn');
+const $discordStatus        = document.getElementById('discordStatus');
+const $discordSitesContainer = document.getElementById('discordSitesContainer');
+const $discordPreview       = document.getElementById('discordPreview');
+const $discordPreviewLength = document.getElementById('discordPreviewLength');
+const $discordErrors        = document.getElementById('discordErrors');
+const $discordClearErrors   = document.getElementById('discordClearErrors');
+
+// ── 로드 ──
+
+chrome.storage.sync.get({
+  discordEnabled: false,
+  discordWebhookUrl: '',
+  discordSites: DEFAULT_DISCORD_SITES,
+  discordPreview: true,
+  discordPreviewLength: 200
+}, (s) => {
   $discordEnabled.checked = s.discordEnabled;
   $discordUrl.value = s.discordWebhookUrl;
+  $discordPreview.checked = s.discordPreview;
+  $discordPreviewLength.value = s.discordPreviewLength;
+  buildDiscordSiteRows(s.discordSites);
 });
 
-// 활성화 토글
+loadDiscordErrors();
+
+// ── 사이트별 Discord ON/OFF ──
+
+function buildDiscordSiteRows(currentSites) {
+  $discordSitesContainer.innerHTML = '';
+
+  for (const site of SITES) {
+    const label = document.createElement('label');
+    label.className = 'checkbox-label';
+    label.style.marginBottom = '6px';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.dataset.site = site.key;
+    checkbox.checked = currentSites[site.key] !== false;
+
+    checkbox.addEventListener('change', saveDiscordSites);
+
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(` ${site.label}`));
+    $discordSitesContainer.appendChild(label);
+  }
+}
+
+function saveDiscordSites() {
+  const discordSites = {};
+  for (const cb of $discordSitesContainer.querySelectorAll('input[type="checkbox"]')) {
+    discordSites[cb.dataset.site] = cb.checked;
+  }
+  chrome.storage.sync.set({ discordSites });
+}
+
+// ── 기본 설정 이벤트 ──
+
 $discordEnabled.addEventListener('change', () => {
   chrome.storage.sync.set({ discordEnabled: $discordEnabled.checked });
 });
 
-// URL 저장 (입력 중 자동 저장)
 let urlSaveTimer;
 $discordUrl.addEventListener('input', () => {
   clearTimeout(urlSaveTimer);
@@ -153,7 +206,18 @@ $discordUrl.addEventListener('input', () => {
   }, 500);
 });
 
-// 테스트 전송
+$discordPreview.addEventListener('change', () => {
+  chrome.storage.sync.set({ discordPreview: $discordPreview.checked });
+});
+
+$discordPreviewLength.addEventListener('change', () => {
+  const val = Math.max(50, Math.min(500, parseInt($discordPreviewLength.value) || 200));
+  $discordPreviewLength.value = val;
+  chrome.storage.sync.set({ discordPreviewLength: val });
+});
+
+// ── 테스트 전송 ──
+
 $discordTestBtn.addEventListener('click', () => {
   const url = $discordUrl.value.trim();
   if (!url) {
@@ -165,14 +229,12 @@ $discordTestBtn.addEventListener('click', () => {
     return;
   }
 
-  // URL 저장 + 전송 요청
   chrome.storage.sync.set({ discordWebhookUrl: url });
   $discordTestBtn.disabled = true;
   $discordTestBtn.textContent = '전송 중...';
   chrome.runtime.sendMessage({ type: 'TEST_DISCORD', webhookUrl: url });
 });
 
-// 테스트 결과 수신
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type !== 'TEST_DISCORD_RESULT') return;
   $discordTestBtn.disabled = false;
@@ -190,3 +252,24 @@ function showDiscordStatus(text, isError) {
   $discordStatus.className = 'discord-status ' + (isError ? 'err' : 'ok');
   setTimeout(() => { $discordStatus.textContent = ''; }, 5000);
 }
+
+// ── 에러 로그 ──
+
+function loadDiscordErrors() {
+  chrome.storage.local.get({ discordErrors: [] }, ({ discordErrors }) => {
+    if (discordErrors.length === 0) {
+      $discordErrors.textContent = '에러 없음';
+      $discordErrors.style.color = '#888';
+    } else {
+      $discordErrors.textContent = discordErrors.join('\n');
+      $discordErrors.style.color = '#f44336';
+      $discordErrors.style.whiteSpace = 'pre-wrap';
+    }
+  });
+}
+
+$discordClearErrors.addEventListener('click', () => {
+  chrome.storage.local.set({ discordErrors: [] });
+  $discordErrors.textContent = '에러 없음';
+  $discordErrors.style.color = '#888';
+});
