@@ -84,6 +84,10 @@ The extension sends a message to a Discord channel via **Webhook**, and Discord 
 - **Duplicate sounds?**
   - This can happen when a platform triggers both DOM and network signals; the extension includes cooldown/suppression, but selectors may need updates after platform UI changes.
 
+## TODO
+- [ ] Language support (especially English)
+- [ ] Support notifications for other app integrations (image generation, music/playlist creation & linking)
+- [ ] Publish to Chrome Web Store
 
 ## License
 MIT
