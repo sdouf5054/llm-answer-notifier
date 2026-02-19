@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>LLM Answer Notifier — Settings</title>
+  <title data-i18n="optionsPageTitle">LLM Answer Notifier — Settings</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -58,7 +58,6 @@
 
     .checkbox-label input[type="checkbox"] { accent-color: #4A90D9; }
 
-    /* 사이트별 소리 설정 */
     .sound-row {
       display: flex;
       align-items: center;
@@ -97,7 +96,6 @@
     .preview-btn:hover { background: #f0f0f0; }
     .preview-btn:active { background: #e4e4e4; }
 
-    /* Discord 설정 */
     .discord-url {
       width: 100%;
       padding: 8px 10px;
@@ -141,83 +139,74 @@
   </style>
 </head>
 <body>
-  <h1>Settings</h1>
+  <h1 data-i18n="settingsTitle">Settings</h1>
 
-  <!-- 볼륨 -->
   <div class="group">
-    <h2>볼륨</h2>
+    <h2 data-i18n="volumeHeading">Volume</h2>
     <label>
       <input type="range" id="volume" min="0" max="1" step="0.1" value="0.7">
       <span id="volumeValue" class="volume-value">70%</span>
     </label>
   </div>
 
-  <!-- 사이트별 알림음 -->
   <div class="group">
-    <h2>사이트별 알림음</h2>
+    <h2 data-i18n="soundsHeading">Per-site Sound</h2>
     <div id="soundsContainer"></div>
   </div>
 
-  <!-- 알림 조건 -->
   <div class="group">
-    <h2>알림 조건</h2>
+    <h2 data-i18n="notifyConditionHeading">Notify Conditions</h2>
     <label class="checkbox-label">
       <input type="checkbox" id="alwaysNotify">
-      탭을 보고 있을 때도 항상 알림 (해제 시 다른 탭에 있을 때만 알림)
+      <span data-i18n="alwaysNotifyLabel">Always notify even when this tab is active</span>
     </label>
   </div>
 
-  <!-- Discord Webhook -->
   <div class="group">
-    <h2>Discord Webhook</h2>
+    <h2 data-i18n="discordWebhookHeading">Discord Webhook</h2>
     <label class="checkbox-label">
       <input type="checkbox" id="discordEnabled">
-      답변 완료 시 Discord로 알림 전송
+      <span data-i18n="discordEnabledLabel">Send Discord notification when answer is complete</span>
     </label>
-    <input type="text" class="discord-url" id="discordUrl"
+    <input type="text" class="discord-url" id="discordUrl" data-i18n-placeholder="discordWebhookPlaceholder"
       placeholder="https://discord.com/api/webhooks/..." />
     <div class="discord-row">
-      <button class="discord-btn" id="discordTestBtn">📤 테스트 전송</button>
+      <button class="discord-btn" id="discordTestBtn" data-i18n="discordTestButton">📤 Send test</button>
     </div>
     <div class="discord-status" id="discordStatus"></div>
   </div>
 
-  <!-- Discord 사이트별 설정 -->
   <div class="group">
-    <h2>Discord 사이트별 알림</h2>
+    <h2 data-i18n="discordSitesHeading">Discord Site Notifications</h2>
     <div id="discordSitesContainer"></div>
   </div>
 
-  <!-- Discord 미리보기 -->
   <div class="group">
-    <h2>Discord 미리보기</h2>
+    <h2 data-i18n="discordPreviewHeading">Discord Preview</h2>
     <label class="checkbox-label">
       <input type="checkbox" id="discordPreview">
-      답변 텍스트 미리보기 포함
+      <span data-i18n="discordPreviewLabel">Include response text preview</span>
     </label>
     <label>
-      미리보기 글자 수
+      <span data-i18n="discordPreviewLengthLabel">Preview length</span>
       <input type="number" id="discordPreviewLength" min="50" max="500" step="50" value="200"
         style="width:70px; padding:4px 8px; border:1px solid #ccc; border-radius:5px; font-size:13px;">
-      <span style="font-size:12px; color:#888;">자</span>
+      <span style="font-size:12px; color:#888;" data-i18n="charactersSuffix">chars</span>
     </label>
   </div>
 
-
-  <!-- 진단/디버그 -->
   <div class="group">
-    <h2>진단</h2>
+    <h2 data-i18n="diagnosticsHeading">Diagnostics</h2>
     <label class="checkbox-label">
       <input type="checkbox" id="debugLogs">
-      상세 디버그 로그 활성화 (서비스워커 콘솔)
+      <span data-i18n="debugLogsLabel">Enable detailed debug logs (service worker console)</span>
     </label>
   </div>
 
-  <!-- Discord 에러 로그 -->
   <div class="group">
-    <h2>Discord 전송 로그</h2>
-    <div id="discordErrors" style="font-size:12px; color:#888; min-height:20px;">에러 없음</div>
-    <button class="discord-btn" id="discordClearErrors" style="margin-top:8px;">로그 초기화</button>
+    <h2 data-i18n="discordLogHeading">Discord Delivery Log</h2>
+    <div id="discordErrors" style="font-size:12px; color:#888; min-height:20px;" data-i18n="noErrors">No errors</div>
+    <button class="discord-btn" id="discordClearErrors" style="margin-top:8px;" data-i18n="clearLogButton">Clear logs</button>
   </div>
 
   <script src="options.js"></script>

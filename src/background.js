@@ -12,6 +12,15 @@ function logDebug(...args) {
   console.log(P, '[debug]', ...args);
 }
 
+
+function bgMsg(key, substitutions) {
+  return chrome.i18n.getMessage(key, substitutions) || key;
+}
+
+function formatTime(date) {
+  return new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(date);
+}
+
 chrome.storage.sync.get({ debugLogs: false }, ({ debugLogs: enabled }) => {
   debugLogs = Boolean(enabled);
   console.log(P, `Debug logs ${debugLogs ? 'enabled' : 'disabled'}`);
@@ -174,7 +183,7 @@ async function processDiscordQueue() {
 }
 
 function saveDiscordError(msg) {
-  const entry = `${new Date().toLocaleTimeString('ko-KR')} — ${msg}`;
+  const entry = `${formatTime(new Date())} — ${msg}`;
   chrome.storage.local.get({ discordErrors: [] }, ({ discordErrors }) => {
     discordErrors.push(entry);
     if (discordErrors.length > 10) discordErrors.shift(); // 최근 10개만
@@ -203,9 +212,9 @@ async function sendDiscord(site, tabTitle, timestamp, preview) {
   }
 
   const siteLabel = SITE_LABELS[normalizedSite] || normalizedSite;
-  const time = new Date(timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  const time = formatTime(new Date(timestamp));
 
-  let content = `✅ **${siteLabel}** 답변 완료 — ${tabTitle} (${time})`;
+  let content = bgMsg('discordCompletionMessage', [siteLabel, tabTitle, time]);
 
   // 미리보기 추가
   if (settings.discordPreview && preview) {
@@ -308,7 +317,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           username: 'shut your reels down',
-          content: '🔔 테스트 메시지 — shut your reels down이 정상 연결되었습니다!'
+          content: bgMsg('discordTestMessage')
         })
       }).then(res => {
         chrome.runtime.sendMessage({

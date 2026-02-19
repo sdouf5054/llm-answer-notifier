@@ -1,5 +1,25 @@
 // options.js — 설정 페이지
 
+function t(key, substitutions) {
+  return chrome.i18n.getMessage(key, substitutions) || key;
+}
+
+function applyI18n() {
+  document.title = t('optionsPageTitle');
+
+  for (const el of document.querySelectorAll('[data-i18n]')) {
+    el.textContent = t(el.dataset.i18n);
+  }
+
+  for (const el of document.querySelectorAll('[data-i18n-placeholder]')) {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  }
+
+  for (const el of document.querySelectorAll('[data-i18n-title]')) {
+    el.title = t(el.dataset.i18nTitle);
+  }
+}
+
 const SITES = [
   { key: 'chatgpt.com',        label: 'ChatGPT' },
   { key: 'claude.ai',          label: 'Claude' },
@@ -7,8 +27,6 @@ const SITES = [
   { key: 'perplexity.ai',      label: 'Perplexity' }
 ];
 
-// assets/sounds/ 에 있는 음원 파일 목록
-// 파일 추가/삭제 시 여기만 수정하면 됨
 const SOUND_FILES = [
   'default.wav',
   'bell1.mp3',
@@ -24,7 +42,6 @@ const SOUND_FILES = [
   'water_drop.mp3'
 ];
 
-// 확장자 제거 → 표시 이름
 const soundLabel = (f) => f.replace(/\.[^.]+$/, '');
 
 const DEFAULT_SOUNDS = {
@@ -34,14 +51,28 @@ const DEFAULT_SOUNDS = {
   'perplexity.ai':      'default.wav'
 };
 
-// ─── DOM ──────────────────────────────────────────────────────
-
 const $volume      = document.getElementById('volume');
 const $volumeValue = document.getElementById('volumeValue');
 const $alwaysNotify = document.getElementById('alwaysNotify');
 const $soundsContainer = document.getElementById('soundsContainer');
 
-// ─── 사이트별 소리 UI 생성 ───────────────────────────────────
+const DEFAULT_DISCORD_SITES = {
+  'chatgpt.com': true, 'claude.ai': true,
+  'gemini.google.com': true, 'perplexity.ai': true
+};
+
+const $discordEnabled       = document.getElementById('discordEnabled');
+const $discordUrl           = document.getElementById('discordUrl');
+const $discordTestBtn       = document.getElementById('discordTestBtn');
+const $discordStatus        = document.getElementById('discordStatus');
+const $discordSitesContainer = document.getElementById('discordSitesContainer');
+const $discordPreview       = document.getElementById('discordPreview');
+const $discordPreviewLength = document.getElementById('discordPreviewLength');
+const $discordErrors        = document.getElementById('discordErrors');
+const $discordClearErrors   = document.getElementById('discordClearErrors');
+const $debugLogs            = document.getElementById('debugLogs');
+
+applyI18n();
 
 function buildSoundRows(currentSounds) {
   $soundsContainer.innerHTML = '';
@@ -65,24 +96,20 @@ function buildSoundRows(currentSounds) {
       select.appendChild(opt);
     }
 
-    // "없음" 항상 마지막
     const noneOpt = document.createElement('option');
     noneOpt.value = 'none';
-    noneOpt.textContent = '🔇 없음';
+    noneOpt.textContent = t('soundDisabledOption');
     if (currentSounds[site.key] === 'none') noneOpt.selected = true;
     select.appendChild(noneOpt);
 
-    select.addEventListener('change', () => {
-      saveSounds();
-    });
+    select.addEventListener('change', saveSounds);
 
     const previewBtn = document.createElement('button');
     previewBtn.className = 'preview-btn';
     previewBtn.textContent = '▶';
-    previewBtn.title = '미리듣기';
+    previewBtn.title = t('previewButtonTitle');
     previewBtn.addEventListener('click', () => {
-      const val = select.value;
-      if (val === 'none') return;
+      if (select.value === 'none') return;
       chrome.runtime.sendMessage({ type: 'PLAY_TEST_SOUND', site: site.key });
     });
 
@@ -101,8 +128,6 @@ function saveSounds() {
   chrome.storage.sync.set({ sounds });
 }
 
-// ─── 설정 로드 ───────────────────────────────────────────────
-
 chrome.storage.sync.get({
   volume: 0.7,
   alwaysNotify: true,
@@ -114,8 +139,6 @@ chrome.storage.sync.get({
   buildSoundRows(s.sounds);
 });
 
-// ─── 이벤트 핸들러 ──────────────────────────────────────────
-
 $volume.addEventListener('input', () => {
   const v = parseFloat($volume.value);
   $volumeValue.textContent = Math.round(v * 100) + '%';
@@ -125,26 +148,6 @@ $volume.addEventListener('input', () => {
 $alwaysNotify.addEventListener('change', () => {
   chrome.storage.sync.set({ alwaysNotify: $alwaysNotify.checked });
 });
-
-// ─── Discord Webhook ────────────────────────────────────────
-
-const DEFAULT_DISCORD_SITES = {
-  'chatgpt.com': true, 'claude.ai': true,
-  'gemini.google.com': true, 'perplexity.ai': true
-};
-
-const $discordEnabled       = document.getElementById('discordEnabled');
-const $discordUrl           = document.getElementById('discordUrl');
-const $discordTestBtn       = document.getElementById('discordTestBtn');
-const $discordStatus        = document.getElementById('discordStatus');
-const $discordSitesContainer = document.getElementById('discordSitesContainer');
-const $discordPreview       = document.getElementById('discordPreview');
-const $discordPreviewLength = document.getElementById('discordPreviewLength');
-const $discordErrors        = document.getElementById('discordErrors');
-const $discordClearErrors   = document.getElementById('discordClearErrors');
-const $debugLogs            = document.getElementById('debugLogs');
-
-// ── 로드 ──
 
 chrome.storage.sync.get({
   discordEnabled: false,
@@ -163,8 +166,6 @@ chrome.storage.sync.get({
 });
 
 loadDiscordErrors();
-
-// ── 사이트별 Discord ON/OFF ──
 
 function buildDiscordSiteRows(currentSites) {
   $discordSitesContainer.innerHTML = '';
@@ -195,8 +196,6 @@ function saveDiscordSites() {
   chrome.storage.sync.set({ discordSites });
 }
 
-// ── 기본 설정 이벤트 ──
-
 $discordEnabled.addEventListener('change', () => {
   chrome.storage.sync.set({ discordEnabled: $discordEnabled.checked });
 });
@@ -214,45 +213,45 @@ $discordPreview.addEventListener('change', () => {
 });
 
 $discordPreviewLength.addEventListener('change', () => {
-  const val = Math.max(50, Math.min(500, parseInt($discordPreviewLength.value) || 200));
+  const val = Math.max(50, Math.min(500, parseInt($discordPreviewLength.value, 10) || 200));
   $discordPreviewLength.value = val;
   chrome.storage.sync.set({ discordPreviewLength: val });
 });
 
-
 $debugLogs.addEventListener('change', () => {
   chrome.storage.sync.set({ debugLogs: $debugLogs.checked });
-  showDiscordStatus($debugLogs.checked ? '디버그 로그 활성화됨' : '디버그 로그 비활성화됨', false);
+  showDiscordStatus(
+    $debugLogs.checked ? t('debugLogsEnabledStatus') : t('debugLogsDisabledStatus'),
+    false
+  );
 });
-
-// ── 테스트 전송 ──
 
 $discordTestBtn.addEventListener('click', () => {
   const url = $discordUrl.value.trim();
   if (!url) {
-    showDiscordStatus('Webhook URL을 입력하세요', true);
+    showDiscordStatus(t('discordWebhookRequiredStatus'), true);
     return;
   }
   if (!url.startsWith('https://discord.com/api/webhooks/')) {
-    showDiscordStatus('올바른 Discord Webhook URL이 아닙니다', true);
+    showDiscordStatus(t('discordWebhookInvalidStatus'), true);
     return;
   }
 
   chrome.storage.sync.set({ discordWebhookUrl: url });
   $discordTestBtn.disabled = true;
-  $discordTestBtn.textContent = '전송 중...';
+  $discordTestBtn.textContent = t('discordSendingButton');
   chrome.runtime.sendMessage({ type: 'TEST_DISCORD', webhookUrl: url });
 });
 
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type !== 'TEST_DISCORD_RESULT') return;
   $discordTestBtn.disabled = false;
-  $discordTestBtn.textContent = '📤 테스트 전송';
+  $discordTestBtn.textContent = t('discordTestButton');
 
   if (msg.ok) {
-    showDiscordStatus('✓ 전송 성공! Discord 채널을 확인하세요', false);
+    showDiscordStatus(t('discordTestSuccessStatus'), false);
   } else {
-    showDiscordStatus(`✗ 전송 실패 (${msg.status || msg.error})`, true);
+    showDiscordStatus(t('discordTestFailedStatus', [String(msg.status || msg.error)]), true);
   }
 });
 
@@ -262,12 +261,10 @@ function showDiscordStatus(text, isError) {
   setTimeout(() => { $discordStatus.textContent = ''; }, 5000);
 }
 
-// ── 에러 로그 ──
-
 function loadDiscordErrors() {
   chrome.storage.local.get({ discordErrors: [] }, ({ discordErrors }) => {
     if (discordErrors.length === 0) {
-      $discordErrors.textContent = '에러 없음';
+      $discordErrors.textContent = t('noErrors');
       $discordErrors.style.color = '#888';
     } else {
       $discordErrors.textContent = discordErrors.join('\n');
@@ -279,6 +276,6 @@ function loadDiscordErrors() {
 
 $discordClearErrors.addEventListener('click', () => {
   chrome.storage.local.set({ discordErrors: [] });
-  $discordErrors.textContent = '에러 없음';
+  $discordErrors.textContent = t('noErrors');
   $discordErrors.style.color = '#888';
 });
