@@ -1,10 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "shut your reels down — LLM Answer Notifier",
+  "name": "__MSG_extName__",
   "version": "0.3.0",
-  "description": "Notifies you with a sound when an LLM finishes generating a response.",
-
-  "permissions": ["offscreen", "storage", "webRequest"],
+  "description": "__MSG_extDescription__",
+  "permissions": [
+    "offscreen",
+    "storage",
+    "webRequest"
+  ],
   "host_permissions": [
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
@@ -14,40 +17,67 @@
     "https://perplexity.ai/*",
     "https://discord.com/api/webhooks/*"
   ],
-
-  "background": { "service_worker": "src/background.js" },
-
+  "background": {
+    "service_worker": "src/background.js"
+  },
   "content_scripts": [
     {
-      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
-      "js": ["src/content/detectors/chatgpt.js", "src/content/engine.js"],
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*"
+      ],
+      "js": [
+        "src/content/detectors/chatgpt.js",
+        "src/content/engine.js"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://claude.ai/*"],
-      "js": ["src/content/detectors/claude.js", "src/content/engine.js"],
+      "matches": [
+        "https://claude.ai/*"
+      ],
+      "js": [
+        "src/content/detectors/claude.js",
+        "src/content/engine.js"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://gemini.google.com/*"],
-      "js": ["src/content/detectors/gemini.js", "src/content/engine.js"],
+      "matches": [
+        "https://gemini.google.com/*"
+      ],
+      "js": [
+        "src/content/detectors/gemini.js",
+        "src/content/engine.js"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://www.perplexity.ai/*"],
-      "js": ["src/content/detectors/perplexity.js", "src/content/engine.js"],
+      "matches": [
+        "https://www.perplexity.ai/*"
+      ],
+      "js": [
+        "src/content/detectors/perplexity.js",
+        "src/content/engine.js"
+      ],
       "run_at": "document_idle"
     }
   ],
-
   "options_page": "src/options.html",
   "icons": {
     "16": "assets/icons/icon16.png",
     "48": "assets/icons/icon48.png",
     "128": "assets/icons/icon128.png"
   },
-  "web_accessible_resources": [{
-    "resources": ["assets/sounds/*"],
-    "matches": ["<all_urls>"]
-  }]
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/sounds/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "default_locale": "en"
 }

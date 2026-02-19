@@ -1,0 +1,53 @@
+{
+  "extName": { "message": "shut your reels down — LLM Answer Notifier" },
+  "extDescription": { "message": "Notifies you with a sound when an LLM finishes generating a response." },
+
+  "optionsPageTitle": { "message": "LLM Answer Notifier — Settings" },
+  "settingsTitle": { "message": "Settings" },
+  "volumeHeading": { "message": "Volume" },
+  "soundsHeading": { "message": "Per-site Sound" },
+  "notifyConditionHeading": { "message": "Notify Conditions" },
+  "alwaysNotifyLabel": { "message": "Always notify even when this tab is active" },
+
+  "discordWebhookHeading": { "message": "Discord Webhook" },
+  "discordEnabledLabel": { "message": "Send Discord notification when answer is complete" },
+  "discordWebhookPlaceholder": { "message": "https://discord.com/api/webhooks/..." },
+  "discordTestButton": { "message": "📤 Send test" },
+  "discordSendingButton": { "message": "Sending..." },
+
+  "discordSitesHeading": { "message": "Discord Site Notifications" },
+  "discordPreviewHeading": { "message": "Discord Preview" },
+  "discordPreviewLabel": { "message": "Include response text preview" },
+  "discordPreviewLengthLabel": { "message": "Preview length" },
+  "charactersSuffix": { "message": "chars" },
+
+  "diagnosticsHeading": { "message": "Diagnostics" },
+  "debugLogsLabel": { "message": "Enable detailed debug logs (service worker console)" },
+  "debugLogsEnabledStatus": { "message": "Debug logs enabled" },
+  "debugLogsDisabledStatus": { "message": "Debug logs disabled" },
+
+  "discordLogHeading": { "message": "Discord Delivery Log" },
+  "noErrors": { "message": "No errors" },
+  "clearLogButton": { "message": "Clear logs" },
+
+  "soundDisabledOption": { "message": "🔇 None" },
+  "previewButtonTitle": { "message": "Preview sound" },
+
+  "discordWebhookRequiredStatus": { "message": "Please enter a webhook URL" },
+  "discordWebhookInvalidStatus": { "message": "Invalid Discord webhook URL" },
+  "discordTestSuccessStatus": { "message": "✓ Sent! Check your Discord channel." },
+  "discordTestFailedStatus": {
+    "message": "✗ Failed to send ($1)",
+    "placeholders": { "error": { "content": "$1" } }
+  },
+
+  "discordCompletionMessage": {
+    "message": "✅ **$1** answer complete — $2 ($3)",
+    "placeholders": {
+      "site": { "content": "$1" },
+      "title": { "content": "$2" },
+      "time": { "content": "$3" }
+    }
+  },
+  "discordTestMessage": { "message": "🔔 Test message — shut your reels down is connected correctly!" }
+}
