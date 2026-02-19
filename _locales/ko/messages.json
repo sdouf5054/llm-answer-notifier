@@ -1,0 +1,53 @@
+{
+  "extName": { "message": "shut your reels down — LLM Answer Notifier" },
+  "extDescription": { "message": "LLM이 답변 생성을 마치면 소리로 알려주는 확장 프로그램입니다." },
+
+  "optionsPageTitle": { "message": "LLM Answer Notifier — 설정" },
+  "settingsTitle": { "message": "설정" },
+  "volumeHeading": { "message": "볼륨" },
+  "soundsHeading": { "message": "사이트별 알림음" },
+  "notifyConditionHeading": { "message": "알림 조건" },
+  "alwaysNotifyLabel": { "message": "탭을 보고 있을 때도 항상 알림" },
+
+  "discordWebhookHeading": { "message": "Discord Webhook" },
+  "discordEnabledLabel": { "message": "답변 완료 시 Discord로 알림 전송" },
+  "discordWebhookPlaceholder": { "message": "https://discord.com/api/webhooks/..." },
+  "discordTestButton": { "message": "📤 테스트 전송" },
+  "discordSendingButton": { "message": "전송 중..." },
+
+  "discordSitesHeading": { "message": "Discord 사이트별 알림" },
+  "discordPreviewHeading": { "message": "Discord 미리보기" },
+  "discordPreviewLabel": { "message": "답변 텍스트 미리보기 포함" },
+  "discordPreviewLengthLabel": { "message": "미리보기 글자 수" },
+  "charactersSuffix": { "message": "자" },
+
+  "diagnosticsHeading": { "message": "진단" },
+  "debugLogsLabel": { "message": "상세 디버그 로그 활성화 (서비스워커 콘솔)" },
+  "debugLogsEnabledStatus": { "message": "디버그 로그 활성화됨" },
+  "debugLogsDisabledStatus": { "message": "디버그 로그 비활성화됨" },
+
+  "discordLogHeading": { "message": "Discord 전송 로그" },
+  "noErrors": { "message": "에러 없음" },
+  "clearLogButton": { "message": "로그 초기화" },
+
+  "soundDisabledOption": { "message": "🔇 없음" },
+  "previewButtonTitle": { "message": "미리듣기" },
+
+  "discordWebhookRequiredStatus": { "message": "Webhook URL을 입력하세요" },
+  "discordWebhookInvalidStatus": { "message": "올바른 Discord Webhook URL이 아닙니다" },
+  "discordTestSuccessStatus": { "message": "✓ 전송 성공! Discord 채널을 확인하세요" },
+  "discordTestFailedStatus": {
+    "message": "✗ 전송 실패 ($1)",
+    "placeholders": { "error": { "content": "$1" } }
+  },
+
+  "discordCompletionMessage": {
+    "message": "✅ **$1** 답변 완료 — $2 ($3)",
+    "placeholders": {
+      "site": { "content": "$1" },
+      "title": { "content": "$2" },
+      "time": { "content": "$3" }
+    }
+  },
+  "discordTestMessage": { "message": "🔔 테스트 메시지 — shut your reels down이 정상 연결되었습니다!" }
+}
