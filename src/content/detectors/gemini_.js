@@ -3,23 +3,12 @@
 window.__AI_NOTIFIER_DETECTOR = {
   hostnames: ['gemini.google.com'],
 
-  // 페이지 로드 및 SPA 대화 전환 직후 progress bar 오감지 방지
-  // URL이 바뀔 때마다 grace 기간을 리셋하여,
-  // 기존 대화를 클릭해 불러올 때 나타나는 일시적 생성 신호를 무시
-  _GRACE_MS: 5000,
-  _graceUntil: Date.now() + 5000,
-  _lastUrl: location.href,
-
-  _checkUrlChange() {
-    if (location.href !== this._lastUrl) {
-      this._lastUrl = location.href;
-      this._graceUntil = Date.now() + this._GRACE_MS;
-    }
-  },
+  // 페이지 로드 직후 progress bar 오감지 방지
+  _initTime: Date.now(),
+  _INIT_GRACE_MS: 5000,
 
   isGenerating() {
-    this._checkUrlChange();
-    if (Date.now() < this._graceUntil) return false;
+    if (Date.now() - this._initTime < this._INIT_GRACE_MS) return false;
 
     // Tier 1: Stop 버튼 (다국어 aria-label)
     if (document.querySelector('button[aria-label*="Stop"]'))  return true;

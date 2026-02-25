@@ -1,4 +1,6 @@
 // options.js — 설정 페이지
+// constants.js가 options.html에서 먼저 로드되어
+// SITES, SOUND_FILES, DEFAULT_SOUNDS, DEFAULT_DISCORD_SITES 사용 가능
 
 function t(key, substitutions) {
   return chrome.i18n.getMessage(key, substitutions) || key;
@@ -20,59 +22,43 @@ function applyI18n() {
   }
 }
 
-const SITES = [
-  { key: 'chatgpt.com',        label: 'ChatGPT' },
-  { key: 'claude.ai',          label: 'Claude' },
-  { key: 'gemini.google.com',  label: 'Gemini' },
-  { key: 'perplexity.ai',      label: 'Perplexity' }
-];
-
-const SOUND_FILES = [
-  'default.wav',
-  'bell1.mp3',
-  'bell2.mp3',
-  'bell3.mp3',
-  'bell4.mp3',
-  'coin.mp3',
-  'ding.mp3',
-  'honk1.mp3',
-  'honk2.mp3',
-  'honk3.mp3',
-  'honk4.mp3',
-  'water_drop.mp3'
-];
-
 const soundLabel = (f) => f.replace(/\.[^.]+$/, '');
 
-const DEFAULT_SOUNDS = {
-  'chatgpt.com':        'default.wav',
-  'claude.ai':          'default.wav',
-  'gemini.google.com':  'default.wav',
-  'perplexity.ai':      'default.wav'
-};
+// ─── DOM 요소 ─────────────────────────────────────────────────
 
 const $volume      = document.getElementById('volume');
 const $volumeValue = document.getElementById('volumeValue');
 const $alwaysNotify = document.getElementById('alwaysNotify');
 const $soundsContainer = document.getElementById('soundsContainer');
 
-const DEFAULT_DISCORD_SITES = {
-  'chatgpt.com': true, 'claude.ai': true,
-  'gemini.google.com': true, 'perplexity.ai': true
-};
-
 const $discordEnabled       = document.getElementById('discordEnabled');
 const $discordUrl           = document.getElementById('discordUrl');
 const $discordTestBtn       = document.getElementById('discordTestBtn');
 const $discordStatus        = document.getElementById('discordStatus');
 const $discordSitesContainer = document.getElementById('discordSitesContainer');
-const $discordPreview       = document.getElementById('discordPreview');
-const $discordPreviewLength = document.getElementById('discordPreviewLength');
 const $discordErrors        = document.getElementById('discordErrors');
 const $discordClearErrors   = document.getElementById('discordClearErrors');
 const $debugLogs            = document.getElementById('debugLogs');
 
 applyI18n();
+
+// ─── Storage Batching ─────────────────────────────────────────
+// 설정 변경이 짧은 시간 내 여러 번 발생하면 하나의 storage.sync.set으로 병합
+
+let pendingSync = {};
+let syncTimer = null;
+const SYNC_DELAY_MS = 300;
+
+function saveSync(updates) {
+  Object.assign(pendingSync, updates);
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    chrome.storage.sync.set(pendingSync);
+    pendingSync = {};
+  }, SYNC_DELAY_MS);
+}
+
+// ─── 사이트별 알림음 ─────────────────────────────────────────
 
 function buildSoundRows(currentSounds) {
   $soundsContainer.innerHTML = '';
@@ -125,47 +111,46 @@ function saveSounds() {
   for (const select of $soundsContainer.querySelectorAll('select')) {
     sounds[select.dataset.site] = select.value;
   }
-  chrome.storage.sync.set({ sounds });
+  saveSync({ sounds });
 }
+
+// ─── 초기 로드 ────────────────────────────────────────────────
 
 chrome.storage.sync.get({
   volume: 0.7,
   alwaysNotify: true,
-  sounds: DEFAULT_SOUNDS
+  sounds: DEFAULT_SOUNDS,
+  discordEnabled: false,
+  discordWebhookUrl: '',
+  discordSites: DEFAULT_DISCORD_SITES,
+  debugLogs: false
 }, (s) => {
   $volume.value = s.volume;
   $volumeValue.textContent = Math.round(s.volume * 100) + '%';
   $alwaysNotify.checked = s.alwaysNotify;
   buildSoundRows(s.sounds);
-});
 
-$volume.addEventListener('input', () => {
-  const v = parseFloat($volume.value);
-  $volumeValue.textContent = Math.round(v * 100) + '%';
-  chrome.storage.sync.set({ volume: v });
-});
-
-$alwaysNotify.addEventListener('change', () => {
-  chrome.storage.sync.set({ alwaysNotify: $alwaysNotify.checked });
-});
-
-chrome.storage.sync.get({
-  discordEnabled: false,
-  discordWebhookUrl: '',
-  discordSites: DEFAULT_DISCORD_SITES,
-  discordPreview: true,
-  discordPreviewLength: 200,
-  debugLogs: false
-}, (s) => {
   $discordEnabled.checked = s.discordEnabled;
   $discordUrl.value = s.discordWebhookUrl;
-  $discordPreview.checked = s.discordPreview;
-  $discordPreviewLength.value = s.discordPreviewLength;
   $debugLogs.checked = Boolean(s.debugLogs);
   buildDiscordSiteRows(s.discordSites);
 });
 
 loadDiscordErrors();
+
+// ─── 이벤트 리스너 ───────────────────────────────────────────
+
+$volume.addEventListener('input', () => {
+  const v = parseFloat($volume.value);
+  $volumeValue.textContent = Math.round(v * 100) + '%';
+  saveSync({ volume: v });
+});
+
+$alwaysNotify.addEventListener('change', () => {
+  saveSync({ alwaysNotify: $alwaysNotify.checked });
+});
+
+// ─── Discord 설정 ─────────────────────────────────────────────
 
 function buildDiscordSiteRows(currentSites) {
   $discordSitesContainer.innerHTML = '';
@@ -193,38 +178,26 @@ function saveDiscordSites() {
   for (const cb of $discordSitesContainer.querySelectorAll('input[type="checkbox"]')) {
     discordSites[cb.dataset.site] = cb.checked;
   }
-  chrome.storage.sync.set({ discordSites });
+  saveSync({ discordSites });
 }
 
 $discordEnabled.addEventListener('change', () => {
-  chrome.storage.sync.set({ discordEnabled: $discordEnabled.checked });
+  saveSync({ discordEnabled: $discordEnabled.checked });
 });
 
-let urlSaveTimer;
 $discordUrl.addEventListener('input', () => {
-  clearTimeout(urlSaveTimer);
-  urlSaveTimer = setTimeout(() => {
-    chrome.storage.sync.set({ discordWebhookUrl: $discordUrl.value.trim() });
-  }, 500);
-});
-
-$discordPreview.addEventListener('change', () => {
-  chrome.storage.sync.set({ discordPreview: $discordPreview.checked });
-});
-
-$discordPreviewLength.addEventListener('change', () => {
-  const val = Math.max(50, Math.min(500, parseInt($discordPreviewLength.value, 10) || 200));
-  $discordPreviewLength.value = val;
-  chrome.storage.sync.set({ discordPreviewLength: val });
+  saveSync({ discordWebhookUrl: $discordUrl.value.trim() });
 });
 
 $debugLogs.addEventListener('change', () => {
-  chrome.storage.sync.set({ debugLogs: $debugLogs.checked });
+  saveSync({ debugLogs: $debugLogs.checked });
   showDiscordStatus(
     $debugLogs.checked ? t('debugLogsEnabledStatus') : t('debugLogsDisabledStatus'),
     false
   );
 });
+
+// ─── Discord 테스트 ───────────────────────────────────────────
 
 $discordTestBtn.addEventListener('click', () => {
   const url = $discordUrl.value.trim();
@@ -237,7 +210,7 @@ $discordTestBtn.addEventListener('click', () => {
     return;
   }
 
-  chrome.storage.sync.set({ discordWebhookUrl: url });
+  saveSync({ discordWebhookUrl: url });
   $discordTestBtn.disabled = true;
   $discordTestBtn.textContent = t('discordSendingButton');
   chrome.runtime.sendMessage({ type: 'TEST_DISCORD', webhookUrl: url });
@@ -260,6 +233,8 @@ function showDiscordStatus(text, isError) {
   $discordStatus.className = 'discord-status ' + (isError ? 'err' : 'ok');
   setTimeout(() => { $discordStatus.textContent = ''; }, 5000);
 }
+
+// ─── Discord 에러 로그 ────────────────────────────────────────
 
 function loadDiscordErrors() {
   chrome.storage.local.get({ discordErrors: [] }, ({ discordErrors }) => {

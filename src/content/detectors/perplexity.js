@@ -1,7 +1,8 @@
 // perplexity.js — Perplexity (perplexity.ai) detector
 
 window.__AI_NOTIFIER_DETECTOR = {
-  hostnames: ['www.perplexity.ai', 'perplexity.ai'],
+  // normalized: www 접두사 제거하여 background 사이트 키와 통일
+  hostnames: ['perplexity.ai'],
 
   // 페이지 로드 직후 오감지 방지
   _initTime: Date.now(),
@@ -14,9 +15,12 @@ window.__AI_NOTIFIER_DETECTOR = {
     if (document.querySelector('button[aria-label*="Stop"]'))  return true;
     if (document.querySelector('button[aria-label*="중지"]'))  return true;
 
-    // Tier 2: streaming indicator / 스피너
+    // Tier 2: streaming indicator
     if (document.querySelector('[data-testid="streaming-indicator"]')) return true;
-    if (document.querySelector('.animate-spin')) return true;
+
+    // Tier 3: 스피너 — 답변 영역 내부로 한정하여 오감지 방지
+    // (.animate-spin은 Tailwind 범용 클래스이므로 부모 컨텍스트로 제한)
+    if (document.querySelector('[class*="prose"] .animate-spin, [class*="answer"] .animate-spin, main .animate-spin')) return true;
 
     return false;
   },

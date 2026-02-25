@@ -1,7 +1,8 @@
 // chatgpt.js — ChatGPT (chatgpt.com) detector
 
 window.__AI_NOTIFIER_DETECTOR = {
-  hostnames: ['chatgpt.com', 'chat.openai.com'],
+  // normalized: background와 동일한 사이트 키 사용
+  hostnames: ['chatgpt.com'],
 
   isGenerating() {
     // Tier 1: 핵심 스트리밍 클래스

@@ -3,6 +3,8 @@
 
 'use strict';
 
+importScripts('constants.js');
+
 const P = '[AI-Notifier BG]';
 
 let debugLogs = false;
@@ -31,15 +33,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
   debugLogs = Boolean(changes.debugLogs.newValue);
   console.log(P, `Debug logs ${debugLogs ? 'enabled' : 'disabled'}`);
 });
-
-// ─── 사이트별 기본 알림음 ────────────────────────────────────
-
-const DEFAULT_SOUNDS = {
-  'chatgpt.com':        'default.wav',
-  'claude.ai':          'default.wav',
-  'gemini.google.com':  'default.wav',
-  'perplexity.ai':      'default.wav'
-};
 
 // ─── 소리 재생 (Offscreen Document) ───────────────────────────
 
@@ -74,6 +67,9 @@ async function ensureOffscreen() {
   await offscreenInitPromise;
 }
 
+// content script에서 이미 정규화된 사이트 키를 보내지만,
+// 네트워크 감지(siteFromUrl)에서는 여전히 원본 hostname이 올 수 있으므로 유지.
+// 향후 detector 외 경로가 모두 정규화되면 제거 가능.
 function normalizeSite(site) {
   if (!site) return site;
   if (site === 'www.perplexity.ai') return 'perplexity.ai';
@@ -82,18 +78,16 @@ function normalizeSite(site) {
 }
 
 async function playSound(site) {
-  const normalizedSite = normalizeSite(site);
-
   const { volume, sounds } = await chrome.storage.sync.get({
     volume: 0.7,
     sounds: DEFAULT_SOUNDS
   });
 
-  const soundFile = sounds[normalizedSite] || 'default.wav';
+  const soundFile = sounds[site] || 'default.wav';
 
   // "none" → 이 사이트는 알림 꺼짐
   if (soundFile === 'none') {
-    console.log(P, `Sound disabled for ${normalizedSite}`);
+    console.log(P, `Sound disabled for ${site}`);
     return;
   }
 
@@ -102,18 +96,6 @@ async function playSound(site) {
 }
 
 // ─── Discord Webhook ─────────────────────────────────────────
-
-const SITE_LABELS = {
-  'chatgpt.com':        'ChatGPT',
-  'claude.ai':          'Claude',
-  'gemini.google.com':  'Gemini',
-  'perplexity.ai':      'Perplexity'
-};
-
-const DEFAULT_DISCORD_SITES = {
-  'chatgpt.com': true, 'claude.ai': true,
-  'gemini.google.com': true, 'perplexity.ai': true
-};
 
 // ── 전송 큐 (rate limit 대응) ──
 const discordQueue = [];
@@ -191,65 +173,28 @@ function saveDiscordError(msg) {
   });
 }
 
-
-function getPreviewFromTab(tabId) {
-  return new Promise((resolve) => {
-    if (!tabId) {
-      resolve('');
-      return;
-    }
-
-    chrome.tabs.sendMessage(tabId, { type: 'GET_LATEST_PREVIEW' }, (res) => {
-      if (chrome.runtime.lastError) {
-        logDebug(`Discord: preview unavailable from tab ${tabId} (${chrome.runtime.lastError.message})`);
-        resolve('');
-        return;
-      }
-      resolve(typeof res?.preview === 'string' ? res.preview : '');
-    });
-  });
-}
-
-async function sendDiscord(site, tabTitle, timestamp, preview, tabId) {
-  const normalizedSite = normalizeSite(site);
-
+async function sendDiscord(site, tabTitle, timestamp) {
   const settings = await chrome.storage.sync.get({
     discordWebhookUrl: '',
     discordEnabled: false,
-    discordSites: DEFAULT_DISCORD_SITES,
-    discordPreview: true,
-    discordPreviewLength: 200
+    discordSites: DEFAULT_DISCORD_SITES
   });
 
   if (!settings.discordEnabled || !settings.discordWebhookUrl) return;
   if (!settings.discordWebhookUrl.startsWith('https://discord.com/api/webhooks/')) return;
 
   // 사이트별 ON/OFF
-  if (settings.discordSites[normalizedSite] === false) {
-    console.log(P, `Discord: disabled for ${normalizedSite}`);
+  if (settings.discordSites[site] === false) {
+    console.log(P, `Discord: disabled for ${site}`);
     return;
   }
 
-  const siteLabel = SITE_LABELS[normalizedSite] || normalizedSite;
+  const siteLabel = SITE_LABELS[site] || site;
   const time = formatTime(new Date(timestamp));
 
-  let content = bgMsg('discordCompletionMessage', [siteLabel, tabTitle, time]);
+  const content = bgMsg('discordCompletionMessage', [siteLabel, tabTitle, time]);
 
-  let previewText = preview || '';
-  if (settings.discordPreview && !previewText) {
-    previewText = await getPreviewFromTab(tabId);
-  }
-
-  // 미리보기 추가
-  if (settings.discordPreview && previewText) {
-    const trimmed = previewText.slice(0, settings.discordPreviewLength).replace(/\n{3,}/g, '\n\n').trim();
-    if (trimmed) {
-      content += `\n>>> ${trimmed}`;
-      if (previewText.length > settings.discordPreviewLength) content += '…';
-    }
-  }
-
-  const queueKey = `${normalizedSite}|${tabTitle}|${previewText ? previewText.slice(0, 80) : ''}`;
+  const queueKey = `${site}|${tabTitle}`;
 
   // 동일 메시지가 큐에 이미 있으면 최신 정보로 덮어씀
   const existing = discordQueue.find((job) => job.queueKey === queueKey);
@@ -330,12 +275,9 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
       break;
 
     case 'TEST_DISCORD': {
-      // 옵션 페이지에서 테스트 전송 → 결과를 sendResponse로 반환
       const url = msg.webhookUrl;
-      if (!url || !url.startsWith('https://discord.com/api/webhooks/')) {
-        msg._sendResponse?.({ ok: false, error: 'Invalid URL' });
-        break;
-      }
+      if (!url || !url.startsWith('https://discord.com/api/webhooks/')) break;
+
       fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -360,7 +302,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
     }
 
     case 'ANSWER_DONE':
-      msg.site = normalizeSite(msg.site);
+      // content script에서 이미 정규화된 사이트 키가 옴
       console.log(P, 'Answer done:', msg.site, `(tab ${tabId})`);
       if (tabId && !canNotify(tabId)) {
         console.log(P, 'Skipped — tab cooldown active');
@@ -368,7 +310,7 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
       }
       if (tabId) markNotified(tabId);
       playSound(msg.site);
-      sendDiscord(msg.site, msg.tabTitle, msg.timestamp, msg.preview, tabId);
+      sendDiscord(msg.site, msg.tabTitle, msg.timestamp);
       break;
 
     case 'START_HEARTBEAT':
@@ -384,15 +326,17 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
 // ─── 네트워크 기반 스트리밍 완료 감지 ─────────────────────────
 
 const STREAM_RULES = [
-  { site: 'chatgpt.com', pattern: 'https://chatgpt.com/backend-api/f/conversation' },
-  { site: 'chatgpt.com', pattern: 'https://chatgpt.com/backend-api/*/conversation' },
-  { site: 'chat.openai.com', pattern: 'https://chat.openai.com/backend-api/f/conversation' },
-  { site: 'chat.openai.com', pattern: 'https://chat.openai.com/backend-api/*/conversation' },
-  { site: 'claude.ai', pattern: 'https://claude.ai/api/*/completion' },
-  { site: 'gemini.google.com', pattern: 'https://gemini.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate*' },
-  { site: 'gemini.google.com', pattern: 'https://gemini.google.com/u/*/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate*' },
-  { site: 'perplexity.ai', pattern: 'https://www.perplexity.ai/rest/sse/perplexity_ask*' },
-  { site: 'perplexity.ai', pattern: 'https://perplexity.ai/rest/sse/perplexity_ask*' }
+  // ChatGPT — 와일드카드가 /f/ 경로를 포함하므로 하나로 충분
+  { site: 'chatgpt.com',        pattern: 'https://chatgpt.com/backend-api/*/conversation' },
+  { site: 'chatgpt.com',        pattern: 'https://chat.openai.com/backend-api/*/conversation' },
+  // Claude
+  { site: 'claude.ai',          pattern: 'https://claude.ai/api/*/completion' },
+  // Gemini
+  { site: 'gemini.google.com',  pattern: 'https://gemini.google.com/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate*' },
+  { site: 'gemini.google.com',  pattern: 'https://gemini.google.com/u/*/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate*' },
+  // Perplexity
+  { site: 'perplexity.ai',      pattern: 'https://www.perplexity.ai/rest/sse/perplexity_ask*' },
+  { site: 'perplexity.ai',      pattern: 'https://perplexity.ai/rest/sse/perplexity_ask*' }
 ];
 
 const STREAM_URL_PATTERNS = [...new Set(STREAM_RULES.map((rule) => rule.pattern))];
@@ -400,9 +344,12 @@ const STREAM_URL_PATTERNS = [...new Set(STREAM_RULES.map((rule) => rule.pattern)
 const MIN_STREAM_DURATION_MS = 1000;
 const pendingStreams = new Map();
 
+// 네트워크 URL에서 정규화된 사이트 키를 반환
 function siteFromUrl(url) {
   for (const rule of STREAM_RULES) {
-    if (url.includes(rule.site)) return normalizeSite(rule.site);
+    if (url.includes(rule.site) || url.includes('www.' + rule.site) || url.includes('chat.openai.com')) {
+      return rule.site; // STREAM_RULES의 site 값이 이미 정규화됨
+    }
   }
   return null;
 }
@@ -446,7 +393,7 @@ chrome.webRequest.onCompleted.addListener(
         markNotified(tabId);
         console.log(P, `${site} stream ended (${duration}ms) — playing sound`);
         playSound(site);
-        sendDiscord(site, tab.title, new Date().toISOString(), '', tabId);
+        sendDiscord(site, tab.title, new Date().toISOString());
         chrome.tabs.sendMessage(tabId, { type: 'NETWORK_DONE' }).catch(() => {});
       });
     });

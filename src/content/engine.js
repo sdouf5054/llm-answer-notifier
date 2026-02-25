@@ -6,6 +6,8 @@
 //                ↑ flickering ↓
 //             GENERATING ← SETTLING
 //
+// PENDING_DONE: onDone() 비동기 처리 중 재진입 방지용 잠금 상태
+//
 // 모든 시간 판정은 tick() 내에서 Date.now() 비교로 수행.
 // (hidden 탭에서 setTimeout이 throttle되므로 setTimeout 사용하지 않음)
 
@@ -25,7 +27,6 @@
   const TEXT_STABLE_MS   = 1500;  // 텍스트 변화 없으면 완료 판정
   const COOLDOWN_MS      = 3000;  // DONE → IDLE 전이 대기
   const GRACE_MS         = 2000;  // 생성 신호 소멸 후 flickering 유예
-  const NET_SUPPRESS_MS  = 10000; // 네트워크 알림 후 감지 억제
 
   // ─── 상태 ────────────────────────────────────────────────────
 
@@ -41,8 +42,10 @@
   // DONE phase
   let doneEnteredAt    = 0;
 
-  // 네트워크 감지 보호
-  let netDoneAt        = 0;
+  // [P0] 네트워크 감지 이중 알림 방지
+  // NETWORK_DONE 수신 시 true → isGenerating()이 완전히 false가 될 때까지
+  // GENERATING 진입을 차단하여 탭 복귀 시 DOM flickering에 의한 2차 알림을 방지
+  let networkHandled   = false;
 
   // ─── 유틸리티 ────────────────────────────────────────────────
 
@@ -74,20 +77,17 @@
 
   // ─── 메시지 수신 ────────────────────────────────────────────
 
-  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'PULSE') {
       tick();
     }
     if (msg.type === 'NETWORK_DONE') {
-      log('Network handled notification — suppressing detection');
+      // [P0] 네트워크가 이미 알림을 처리함 — 이 사이클의 DOM 감지를 억제
+      log('Network handled notification — suppressing this cycle');
       stopHeartbeat();
-      netDoneAt = Date.now();
+      networkHandled = true;
       lastNotifiedAt = Date.now();
       state = 'IDLE';
-    }
-    if (msg.type === 'GET_LATEST_PREVIEW') {
-      const text = detector.getLastResponseText();
-      sendResponse({ preview: text ? text.slice(0, 500) : '' });
     }
   });
 
@@ -96,6 +96,10 @@
   function onDone() {
     const now = Date.now();
 
+    // [P1] 비동기 콜백 실행 전 tick() 재진입 방지
+    if (state !== 'SETTLING') return;
+    transition('PENDING_DONE');
+
     if (now - lastNotifiedAt < COOLDOWN_MS) {
       log('Skipped: cooldown active');
       stopHeartbeat();
@@ -103,7 +107,13 @@
       return;
     }
 
-    const text = detector.getLastResponseText();
+    // [P0] 네트워크가 이미 이 사이클을 처리했으면 스킵
+    if (networkHandled) {
+      log('Skipped: already notified by network for this cycle');
+      stopHeartbeat();
+      transition('IDLE');
+      return;
+    }
 
     chrome.storage.sync.get({ alwaysNotify: true }, ({ alwaysNotify }) => {
       if (!alwaysNotify && document.visibilityState === 'visible') {
@@ -113,40 +123,38 @@
         return;
       }
 
-      lastNotifiedAt = now;
+      lastNotifiedAt = Date.now();
       stopHeartbeat();
 
-      log('✅ Notification sent');
-      log('   Site:', detector.hostnames[0], '| Length:', text?.length ?? 0);
+      log('✅ Notification sent —', detector.hostnames[0]);
 
       chrome.runtime.sendMessage({
         type: 'ANSWER_DONE',
         site: detector.hostnames[0],
         tabTitle: document.title,
-        timestamp: new Date().toISOString(),
-        preview: text ? text.slice(0, 500) : ''
+        timestamp: new Date().toISOString()
       });
 
       transition('DONE');
-      doneEnteredAt = now;
+      doneEnteredAt = Date.now();
     });
   }
 
   // ─── 메인 tick ──────────────────────────────────────────────
 
   function tick() {
-    const now = Date.now();
-
-    // 네트워크 감지 후 보호 기간 — 모든 감지 억제
-    if (now - netDoneAt < NET_SUPPRESS_MS) {
-      if (state !== 'IDLE') state = 'IDLE';
-      return;
-    }
-
     const generating = detector.isGenerating();
 
     switch (state) {
       case 'IDLE':
+        // [P0] 네트워크 알림 후 잠금 상태: 생성 신호가 완전히 사라질 때까지 대기
+        if (networkHandled) {
+          if (!generating) {
+            networkHandled = false;
+            log('Network suppression cleared — clean IDLE confirmed');
+          }
+          break;
+        }
         if (generating) {
           transition('GENERATING');
           startHeartbeat();
@@ -156,7 +164,7 @@
       case 'GENERATING':
         if (!generating) {
           transition('SETTLING');
-          settleStartedAt = now;
+          settleStartedAt = Date.now();
           settleGraceDone = false;
           stableText = null;
           stableCheckAt = 0;
@@ -173,30 +181,34 @@
 
         // Phase 1: flickering 유예
         if (!settleGraceDone) {
-          if (now - settleStartedAt >= GRACE_MS) {
+          if (Date.now() - settleStartedAt >= GRACE_MS) {
             settleGraceDone = true;
             log('Signal off confirmed — checking text stability');
             stableText = detector.getLastResponseText();
-            stableCheckAt = now;
+            stableCheckAt = Date.now();
           }
           break;
         }
 
         // Phase 2: 텍스트 안정화
-        if (now - stableCheckAt >= TEXT_STABLE_MS) {
+        if (Date.now() - stableCheckAt >= TEXT_STABLE_MS) {
           const current = detector.getLastResponseText();
           if (current === stableText) {
             onDone();
           } else {
             log('Text still changing — rechecking');
             stableText = current;
-            stableCheckAt = now;
+            stableCheckAt = Date.now();
           }
         }
         break;
 
+      // [P1] PENDING_DONE: onDone()의 비동기 처리가 끝날 때까지 대기
+      case 'PENDING_DONE':
+        break;
+
       case 'DONE':
-        if (now - doneEnteredAt >= COOLDOWN_MS) {
+        if (Date.now() - doneEnteredAt >= COOLDOWN_MS) {
           transition('IDLE');
         }
         if (generating) {
@@ -209,7 +221,17 @@
 
   // ─── 초기화 ─────────────────────────────────────────────────
 
-  new MutationObserver(() => tick()).observe(document.body, {
+  // [P1] MutationObserver throttle — rAF 기반으로 과도한 tick 호출 방지
+  let tickScheduled = false;
+
+  new MutationObserver(() => {
+    if (tickScheduled) return;
+    tickScheduled = true;
+    requestAnimationFrame(() => {
+      tick();
+      tickScheduled = false;
+    });
+  }).observe(document.body, {
     childList: true,
     subtree: true,
     attributes: true,

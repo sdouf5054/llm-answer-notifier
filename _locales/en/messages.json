@@ -16,10 +16,6 @@
   "discordSendingButton": { "message": "Sending..." },
 
   "discordSitesHeading": { "message": "Discord Site Notifications" },
-  "discordPreviewHeading": { "message": "Discord Preview" },
-  "discordPreviewLabel": { "message": "Include response text preview" },
-  "discordPreviewLengthLabel": { "message": "Preview length" },
-  "charactersSuffix": { "message": "chars" },
 
   "diagnosticsHeading": { "message": "Diagnostics" },
   "debugLogsLabel": { "message": "Enable detailed debug logs (service worker console)" },

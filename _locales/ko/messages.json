@@ -16,10 +16,6 @@
   "discordSendingButton": { "message": "전송 중..." },
 
   "discordSitesHeading": { "message": "Discord 사이트별 알림" },
-  "discordPreviewHeading": { "message": "Discord 미리보기" },
-  "discordPreviewLabel": { "message": "답변 텍스트 미리보기 포함" },
-  "discordPreviewLengthLabel": { "message": "미리보기 글자 수" },
-  "charactersSuffix": { "message": "자" },
 
   "diagnosticsHeading": { "message": "진단" },
   "debugLogsLabel": { "message": "상세 디버그 로그 활성화 (서비스워커 콘솔)" },
